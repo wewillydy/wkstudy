@@ -16,6 +16,7 @@ export default function LoginPage() {
   const [sending, setSending] = useState(false);
   const [countdown, setCountdown] = useState(0);
   const [loading, setLoading] = useState(false);
+  const [error, setError] = useState('');
   const [slogans, setSlogans] = useState<string[]>([
     "名师作伴，顶峰相见",
     "名师带路，超越无数",
@@ -46,60 +47,53 @@ export default function LoginPage() {
 
   const handleSendCode = async () => {
     if (!email || !/^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(email)) {
-      showToast("请输入有效的邮箱地址");
+      setError("请输入有效的邮箱地址");
       return;
     }
     setSending(true);
+    setError('');
     try {
       const { data } = await authApi.sendCode(email, "register");
       showToast("验证码已发送");
       setCountdown(60);
       if (data.dev_code) setCode(data.dev_code);
     } catch (err: any) {
-      showToast(err.response?.data?.detail || "发送失败");
+      setError(err.response?.data?.detail || "发送失败");
     } finally {
       setSending(false);
     }
   };
 
   const doLogin = async () => {
-    console.log("[Login] doLogin called", { email, password });
-    if (!email) { showToast("请输入邮箱"); return; }
-    if (!password) { showToast("请输入密码"); return; }
+    if (!email) { setError("请输入邮箱"); return; }
+    if (!password) { setError("请输入密码"); return; }
     setLoading(true);
+    setError('');
     try {
-      console.log("[Login] calling store.login...");
-      await login(email, password, true);
-      console.log("[Login] login ok, navigating");
+      await login(email, password);
       navigate("/");
     } catch (err: any) {
-      console.error("[Login] error:", err);
-      showToast(err.response?.data?.detail || "登录失败");
+      setError(err.response?.data?.detail || "登录失败");
     } finally {
       setLoading(false);
     }
   };
 
   const doRegister = async () => {
-    console.log("[Register] doRegister called");
-    if (!nickname) { showToast("请输入昵称"); return; }
-    if (!email) { showToast("请输入邮箱"); return; }
-    if (!password || password.length < 6) { showToast("密码至少6位"); return; }
-    if (!code) { showToast("请输入验证码"); return; }
+    if (!nickname) { setError("请输入昵称"); return; }
+    if (!email) { setError("请输入邮箱"); return; }
+    if (!password || password.length < 6) { setError("密码至少6位"); return; }
+    if (!code) { setError("请输入验证码"); return; }
     setLoading(true);
+    setError('');
     try {
       await register(email, code, password, nickname);
       navigate("/");
     } catch (err: any) {
-      showToast(err.response?.data?.detail || "注册失败");
+      setError(err.response?.data?.detail || "注册失败");
     } finally {
       setLoading(false);
     }
-  };
-
-  const handleSubmit = (e: React.FormEvent) => {
-    e.preventDefault();
-    mode === "login" ? doLogin() : doRegister();
   };
 
   return (
@@ -117,10 +111,10 @@ export default function LoginPage() {
           </div>
         </div>
 
-        <form onSubmit={handleSubmit} className="rounded-[var(--radius-lg)] p-8 border border-[var(--border)]" style={{ background: "var(--surface)" }}>
+        <div className="rounded-[var(--radius-lg)] p-8 border border-[var(--border)]" style={{ background: "var(--surface)" }}>
           <div className="flex mb-6 rounded-[var(--radius)]" style={{ background: "var(--fg-soft)" }}>
-            <button type="button" className={`flex-1 py-2.5 text-sm font-medium rounded-[var(--radius)] transition-all ${mode === "login" ? "text-[var(--fg)]" : "text-[var(--muted)]"}`} style={mode === "login" ? { background: "var(--accent)" } : {}} onClick={() => setMode("login")}>登录</button>
-            <button type="button" className={`flex-1 py-2.5 text-sm font-medium rounded-[var(--radius)] transition-all ${mode === "register" ? "text-[var(--fg)]" : "text-[var(--muted)]"}`} style={mode === "register" ? { background: "var(--accent)" } : {}} onClick={() => setMode("register")}>注册</button>
+            <button type="button" className={`flex-1 py-2.5 text-sm font-medium rounded-[var(--radius)] transition-all ${mode === "login" ? "text-[var(--fg)]" : "text-[var(--muted)]"}`} style={mode === "login" ? { background: "var(--accent)" } : {}} onClick={() => { setMode("login"); setError(''); }}>登录</button>
+            <button type="button" className={`flex-1 py-2.5 text-sm font-medium rounded-[var(--radius)] transition-all ${mode === "register" ? "text-[var(--fg)]" : "text-[var(--muted)]"}`} style={mode === "register" ? { background: "var(--accent)" } : {}} onClick={() => { setMode("register"); setError(''); }}>注册</button>
           </div>
 
           <div className="space-y-4">
@@ -152,8 +146,10 @@ export default function LoginPage() {
             )}
           </div>
 
+          {error && <p className="text-[var(--danger)] text-sm mt-4">{error}</p>}
+
           <button type="button" disabled={loading} onClick={() => mode === "login" ? doLogin() : doRegister()} className="w-full mt-6 py-3 rounded-[var(--radius)] font-semibold text-base transition-all disabled:opacity-60" style={{ background: "var(--accent)", color: "#fff" }}>{loading ? "处理中..." : mode === "login" ? "登录" : "注册"}</button>
-        </form>
+        </div>
       </div>
     </div>
   );

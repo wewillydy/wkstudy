@@ -1,4 +1,4 @@
-﻿import { useState, useEffect } from 'react';
+import { useState, useEffect } from 'react';
 import { useNavigate } from 'react-router-dom';
 import { useToastStore } from '../stores';
 import { adminApi, courseApi, sloganApi, scheduleApi } from '../api/client';
@@ -151,7 +151,7 @@ function CoursesPanel() {
   const showToast = useToastStore((s) => s.show);
 
   const fetchCourses = () => {
-    courseApi.list({ page_size: 100 }).then(({ data }) => setCourses(data.items)).catch(() => {});
+    courseApi.list({ page_size: 100 }).then(({ data }) => { console.log("[Admin] courses:", data); setCourses(data.items || []); }).catch((err) => { console.error("[Admin] fetch error:", err); });
   };
 
   useEffect(() => { fetchCourses(); }, []);

@@ -1,4 +1,4 @@
-﻿from datetime import datetime, timedelta
+from datetime import datetime, timedelta
 from fastapi import APIRouter, Depends, HTTPException, status
 from sqlalchemy.orm import Session
 
@@ -61,8 +61,8 @@ async def register(req: RegisterRequest, db: Session = Depends(get_db)):
     db.add(user)
     db.flush()
 
-    access_token = create_access_token(data={"sub": user.id})
-    refresh_token_str = create_refresh_token(data={"sub": user.id})
+    access_token = create_access_token(data={"sub": str(user.id)})
+    refresh_token_str = create_refresh_token(data={"sub": str(user.id)})
     rt = RefreshToken(
         user_id=user.id,
         token=refresh_token_str,
@@ -83,8 +83,8 @@ async def login(req: LoginRequest, db: Session = Depends(get_db)):
     if not verify_password(req.password, user.password_hash):
         raise HTTPException(status_code=400, detail="Incorrect password")
 
-    access_token = create_access_token(data={"sub": user.id})
-    refresh_token_str = create_refresh_token(data={"sub": user.id})
+    access_token = create_access_token(data={"sub": str(user.id)})
+    refresh_token_str = create_refresh_token(data={"sub": str(user.id)})
 
     if req.remember_me:
         rt = RefreshToken(
@@ -122,8 +122,8 @@ async def refresh_token(req: RefreshRequest, db: Session = Depends(get_db)):
     if not user or not user.is_active:
         raise HTTPException(status_code=403, detail="Account disabled")
 
-    new_access = create_access_token(data={"sub": user.id})
-    new_refresh = create_refresh_token(data={"sub": user.id})
+    new_access = create_access_token(data={"sub": str(user.id)})
+    new_refresh = create_refresh_token(data={"sub": str(user.id)})
 
     new_rt = RefreshToken(
         user_id=user.id,

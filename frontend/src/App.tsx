@@ -1,5 +1,4 @@
 ﻿import { BrowserRouter, Routes, Route, Navigate } from 'react-router-dom';
-import { useEffect } from 'react';
 import { useAuthStore, useToastStore } from './stores';
 import { Toasts } from './components/Toast';
 import LoginPage from './pages/LoginPage';
@@ -21,12 +20,7 @@ function AdminRoute({ children }: { children: React.ReactNode }) {
 }
 
 export default function App() {
-  const { isAuthenticated, fetchUser } = useAuthStore();
   const toasts = useToastStore((s) => s.toasts);
-
-  useEffect(() => {
-    if (isAuthenticated) fetchUser();
-  }, []);
 
   return (
     <BrowserRouter>

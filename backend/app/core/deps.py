@@ -1,4 +1,4 @@
-from fastapi import Depends, HTTPException, status
+﻿from fastapi import Depends, HTTPException, status
 from fastapi.security import HTTPBearer, HTTPAuthorizationCredentials
 from sqlalchemy.orm import Session
 from jose import JWTError
@@ -15,20 +15,25 @@ async def get_current_user(
     db: Session = Depends(get_db),
 ) -> User:
     if not credentials:
-        raise HTTPException(status_code=status.HTTP_401_UNAUTHORIZED, detail="未提供认证信息")
+        print("[AUTH] No credentials")
+        raise HTTPException(status_code=status.HTTP_401_UNAUTHORIZED, detail="No auth header")
     try:
         payload = decode_token(credentials.credentials)
+        print(f"[AUTH] decoded sub={payload.get('sub')} type={payload.get('type')}")
         if payload.get("type") != "access":
-            raise HTTPException(status_code=status.HTTP_401_UNAUTHORIZED, detail="无效的Token类型")
-        user_id: int = payload.get("sub")
-        if user_id is None:
-            raise HTTPException(status_code=status.HTTP_401_UNAUTHORIZED, detail="无效的Token")
-    except JWTError:
-        raise HTTPException(status_code=status.HTTP_401_UNAUTHORIZED, detail="Token已过期或无效")
+            raise HTTPException(status_code=status.HTTP_401_UNAUTHORIZED, detail="Wrong token type")
+        sub = payload.get("sub")
+        if not sub:
+            raise HTTPException(status_code=status.HTTP_401_UNAUTHORIZED, detail="No sub")
+        user_id = int(sub)
+    except JWTError as e:
+        print(f"[AUTH] JWT error: {e}")
+        raise HTTPException(status_code=status.HTTP_401_UNAUTHORIZED, detail=f"Token error: {e}")
 
     user = db.query(User).filter(User.id == user_id).first()
     if not user or not user.is_active:
-        raise HTTPException(status_code=status.HTTP_401_UNAUTHORIZED, detail="用户不存在或已被禁用")
+        print(f"[AUTH] User not found: id={user_id}")
+        raise HTTPException(status_code=status.HTTP_401_UNAUTHORIZED, detail="User not found")
     return user
 
 
@@ -36,7 +41,7 @@ async def get_admin_user(
     current_user: User = Depends(get_current_user),
 ) -> User:
     if not current_user.is_admin:
-        raise HTTPException(status_code=status.HTTP_403_FORBIDDEN, detail="需要管理员权限")
+        raise HTTPException(status_code=status.HTTP_403_FORBIDDEN, detail="Admin required")
     return current_user
 
 
@@ -50,7 +55,10 @@ async def get_optional_user(
         payload = decode_token(credentials.credentials)
         if payload.get("type") != "access":
             return None
-        user_id: int = payload.get("sub")
+        sub = payload.get("sub")
+        if not sub:
+            return None
+        user_id = int(sub)
         user = db.query(User).filter(User.id == user_id).first()
         return user if user and user.is_active else None
     except JWTError:

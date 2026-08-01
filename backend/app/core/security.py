@@ -1,4 +1,5 @@
-from datetime import datetime, timedelta
+﻿import time
+from datetime import timedelta
 from typing import Any
 from jose import jwt
 import bcrypt
@@ -17,15 +18,15 @@ def verify_password(plain: str, hashed: str) -> bool:
 
 def create_access_token(data: dict[str, Any], expires_delta: timedelta | None = None) -> str:
     to_encode = data.copy()
-    expire = datetime.now() + (expires_delta or timedelta(minutes=settings.ACCESS_TOKEN_EXPIRE_MINUTES))
-    to_encode.update({"exp": expire, "type": "access"})
+    delta = (expires_delta or timedelta(minutes=settings.ACCESS_TOKEN_EXPIRE_MINUTES)).total_seconds()
+    to_encode.update({"exp": int(time.time() + delta), "type": "access"})
     return jwt.encode(to_encode, settings.SECRET_KEY, algorithm=settings.ALGORITHM)
 
 
 def create_refresh_token(data: dict[str, Any]) -> str:
     to_encode = data.copy()
-    expire = datetime.now() + timedelta(days=settings.REFRESH_TOKEN_EXPIRE_DAYS)
-    to_encode.update({"exp": expire, "type": "refresh"})
+    delta = timedelta(days=settings.REFRESH_TOKEN_EXPIRE_DAYS).total_seconds()
+    to_encode.update({"exp": int(time.time() + delta), "type": "refresh"})
     return jwt.encode(to_encode, settings.SECRET_KEY, algorithm=settings.ALGORITHM)
 
 

@@ -1,5 +1,6 @@
 ﻿import { create } from 'zustand';
 import { authApi } from '../api/client';
+import api from '../api/client';
 
 interface User {
   id: number;
@@ -12,8 +13,7 @@ interface User {
 interface AuthState {
   user: User | null;
   isAuthenticated: boolean;
-  isLoading: boolean;
-  login: (email: string, password: string, rememberMe: boolean) => Promise<void>;
+  login: (email: string, password: string) => Promise<void>;
   register: (email: string, code: string, password: string, nickname: string) => Promise<void>;
   logout: () => void;
   fetchUser: () => Promise<void>;
@@ -22,24 +22,22 @@ interface AuthState {
 export const useAuthStore = create<AuthState>((set) => ({
   user: null,
   isAuthenticated: !!localStorage.getItem('access_token'),
-  isLoading: false,
 
-  login: async (email, password, rememberMe) => {
-    const { data } = await authApi.login({ email, password, remember_me: rememberMe });
+  login: async (email, password) => {
+    const { data } = await authApi.login({ email, password, remember_me: true });
     localStorage.setItem('access_token', data.access_token);
     localStorage.setItem('refresh_token', data.refresh_token);
-    set({ isAuthenticated: true });
-    const me = await authApi.me();
-    set({ user: me.data });
+    // Fetch user info after setting token
+    const me = await api.get('/auth/me');
+    set({ user: me.data, isAuthenticated: true });
   },
 
   register: async (email, code, password, nickname) => {
     const { data } = await authApi.register({ email, code, password, nickname });
     localStorage.setItem('access_token', data.access_token);
     localStorage.setItem('refresh_token', data.refresh_token);
-    set({ isAuthenticated: true });
-    const me = await authApi.me();
-    set({ user: me.data });
+    const me = await api.get('/auth/me');
+    set({ user: me.data, isAuthenticated: true });
   },
 
   logout: () => {
@@ -50,13 +48,10 @@ export const useAuthStore = create<AuthState>((set) => ({
 
   fetchUser: async () => {
     try {
-      set({ isLoading: true });
-      const { data } = await authApi.me();
+      const { data } = await api.get('/auth/me');
       set({ user: data });
     } catch {
       set({ user: null, isAuthenticated: false });
-    } finally {
-      set({ isLoading: false });
     }
   },
 }));

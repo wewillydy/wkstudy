@@ -29,7 +29,7 @@ async def create_course(req: CourseCreate, db: Session = Depends(get_db)):
 @router.get("", response_model=PaginatedResponse)
 async def list_courses(
     page: int = Query(1, ge=1),
-    page_size: int = Query(12, ge=1, le=50),
+    page_size: int = Query(12, ge=1, le=200),
     grade: str = Query(""),
     subject: str = Query(""),
     keyword: str = Query(""),
