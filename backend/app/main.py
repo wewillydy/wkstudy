@@ -1,10 +1,10 @@
-import os
+﻿import os
 from fastapi import FastAPI
 from fastapi.middleware.cors import CORSMiddleware
 from fastapi.staticfiles import StaticFiles
 
 from app.core.config import get_settings
-from app.api import auth, courses, marks, schedules, slogans, admin, upload
+from app.api import auth, courses, marks, schedules, slogans, admin, upload, douyin
 
 settings = get_settings()
 
@@ -36,6 +36,7 @@ app.include_router(schedules.router)
 app.include_router(slogans.router)
 app.include_router(admin.router)
 app.include_router(upload.router)
+app.include_router(douyin.router)
 
 
 @app.get("/api/health")

@@ -4,26 +4,8 @@ from sqlalchemy import (
     Float, ForeignKey, Index
 )
 from sqlalchemy.orm import relationship
-import enum
 
 from app.core.database import Base
-
-
-class MarkType(str, enum.Enum):
-    key = "key"
-    doubt = "doubt"
-    custom = "custom"
-
-
-class CourseType(str, enum.Enum):
-    recorded = "recorded"
-    live = "live"
-
-
-class FileType(str, enum.Enum):
-    pdf = "pdf"
-    docx = "docx"
-    md = "md"
 
 
 class User(Base):
@@ -34,7 +16,8 @@ class User(Base):
     nickname = Column(String(100), nullable=False)
     avatar = Column(String(500), default="")
     password_hash = Column(String(255), nullable=False)
-    is_admin = Column(Boolean, default=False)
+    role = Column(String(20), default="student")  # student / course_admin / super_admin
+    douyin_cookie = Column(Text, nullable=True)
     is_active = Column(Boolean, default=True)
     created_at = Column(DateTime, default=datetime.now)
     updated_at = Column(DateTime, default=datetime.now, onupdate=datetime.now)
@@ -42,6 +25,8 @@ class User(Base):
     marks = relationship("Mark", back_populates="user")
     user_courses = relationship("UserCourse", back_populates="user")
     refresh_tokens = relationship("RefreshToken", back_populates="user", cascade="all, delete-orphan")
+    bindings_as_admin = relationship("UserBinding", back_populates="admin",
+                                     foreign_keys="UserBinding.course_admin_id", cascade="all, delete-orphan")
 
 
 class EmailCode(Base):
@@ -55,9 +40,7 @@ class EmailCode(Base):
     used = Column(Boolean, default=False)
     created_at = Column(DateTime, default=datetime.now)
 
-    __table_args__ = (
-        Index("ix_email_codes_email_type", "email", "type"),
-    )
+    __table_args__ = (Index("ix_email_codes_email_type", "email", "type"),)
 
 
 class RefreshToken(Base):
@@ -71,6 +54,20 @@ class RefreshToken(Base):
     created_at = Column(DateTime, default=datetime.now)
 
     user = relationship("User", back_populates="refresh_tokens")
+
+
+class UserBinding(Base):
+    __tablename__ = "user_bindings"
+
+    id = Column(Integer, primary_key=True, autoincrement=True)
+    course_admin_id = Column(Integer, ForeignKey("users.id"), nullable=False)
+    student_id = Column(Integer, ForeignKey("users.id"), nullable=False)
+    created_at = Column(DateTime, default=datetime.now)
+
+    admin = relationship("User", back_populates="bindings_as_admin", foreign_keys=[course_admin_id])
+    student = relationship("User", foreign_keys=[student_id])
+
+    __table_args__ = (Index("ix_binding_admin_student", "course_admin_id", "student_id", unique=True),)
 
 
 class Course(Base):
@@ -88,6 +85,8 @@ class Course(Base):
     teacher_name = Column(String(200), default="")
     status = Column(String(20), default="active")
     sort_order = Column(Integer, default=0)
+    source = Column(String(20), default="direct")  # direct / douyin
+    owner_id = Column(Integer, ForeignKey("users.id"), nullable=True)
     created_at = Column(DateTime, default=datetime.now)
     updated_at = Column(DateTime, default=datetime.now, onupdate=datetime.now)
 
@@ -95,11 +94,13 @@ class Course(Base):
     marks = relationship("Mark", back_populates="course")
     schedules = relationship("Schedule", back_populates="course", cascade="all, delete-orphan")
     user_courses = relationship("UserCourse", back_populates="course")
+    owner = relationship("User", foreign_keys=[owner_id])
 
     __table_args__ = (
         Index("ix_courses_grade", "grade"),
         Index("ix_courses_subject", "subject"),
         Index("ix_courses_status", "status"),
+        Index("ix_courses_owner", "owner_id"),
     )
 
 
@@ -145,9 +146,7 @@ class UserCourse(Base):
     user = relationship("User", back_populates="user_courses")
     course = relationship("Course", back_populates="user_courses")
 
-    __table_args__ = (
-        Index("ix_user_courses_user_course", "user_id", "course_id", unique=True),
-    )
+    __table_args__ = (Index("ix_user_courses_user_course", "user_id", "course_id", unique=True),)
 
 
 class Mark(Base):
@@ -164,9 +163,7 @@ class Mark(Base):
     user = relationship("User", back_populates="marks")
     course = relationship("Course", back_populates="marks")
 
-    __table_args__ = (
-        Index("ix_marks_user_course", "user_id", "course_id"),
-    )
+    __table_args__ = (Index("ix_marks_user_course", "user_id", "course_id"),)
 
 
 class Slogan(Base):

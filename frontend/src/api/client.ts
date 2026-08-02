@@ -17,7 +17,7 @@ export default api;
 
 export const authApi = {
   sendCode: (email: string, type: string) => api.post('/auth/send-code', { email, type }),
-  register: (data: { email: string; code: string; password: string; nickname: string }) =>
+  register: (data: { email: string; code: string; password: string; nickname: string; role: string; org_name?: string }) =>
     api.post('/auth/register', data),
   login: (data: { email: string; password: string; remember_me: boolean }) =>
     api.post('/auth/login', data),
@@ -62,6 +62,19 @@ export const adminApi = {
   stats: () => api.get('/admin/stats'),
   users: (params: any) => api.get('/admin/users', { params }),
   updateUser: (id: number, data: any) => api.put(`/admin/users/${id}`, data),
+  // Bindings
+  bindings: () => api.get('/admin/bindings'),
+  createBinding: (data: { student_email: string }) => api.post('/admin/bindings', data),
+  deleteBinding: (id: number) => api.delete(`/admin/bindings/${id}`),
+  // Douyin cookie
+  getDouyinCookie: () => api.get('/admin/douyin-cookie'),
+  updateDouyinCookie: (data: { cookie: string }) => api.put('/admin/douyin-cookie', data),
+  // My students
+  myStudents: () => api.get('/admin/my-students'),
+};
+
+export const douyinApi = {
+  resolve: (data: { share_url: string }) => api.post('/douyin/resolve', data),
 };
 
 export const uploadApi = {
@@ -73,3 +86,4 @@ export const uploadApi = {
     });
   },
 };
+

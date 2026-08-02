@@ -13,6 +13,7 @@ interface CourseItem {
   subject: string;
   course_type: string;
   teacher_name: string;
+  source: string;
   progress?: number;
   is_completed: boolean;
   mark_count: number;
@@ -34,7 +35,7 @@ export default function HomePage() {
   const [completedCourses, setCompletedCourses] = useState<CourseItem[]>([]);
   const [loading, setLoading] = useState(false);
   const [greeting, setGreeting] = useState('');
-  const sloganTimer = useRef<ReturnType<typeof setInterval>>();
+  const sloganTimer = useRef<ReturnType<typeof setInterval>>(undefined);
 
   useEffect(() => {
     const h = new Date().getHours();
@@ -97,6 +98,8 @@ export default function HomePage() {
     { key: 'completed', label: '已学课程' },
   ];
 
+  const isAdmin = user?.role === 'super_admin' || user?.role === 'course_admin';
+
   return (
     <div className="page">
       {/* Top bar */}
@@ -120,7 +123,7 @@ export default function HomePage() {
             >
               {theme === 'dark' ? '☀️' : '🌙'}
             </button>
-            {user?.is_admin && (
+            {isAdmin && (
               <button
                 onClick={() => navigate('/admin')}
                 className="px-3 py-1.5 text-xs font-medium rounded-[var(--radius)] transition-colors"
@@ -141,34 +144,26 @@ export default function HomePage() {
 
       {/* Slogan banner */}
       {slogans.length > 0 && (
-        <div
-          className="py-10 text-center border-b relative overflow-hidden"
-          style={{ background: 'var(--surface)', borderColor: 'var(--border)' }}
-        >
-          <div
-            className="absolute inset-0 opacity-10"
-            style={{ background: 'radial-gradient(ellipse at 50% 50%, #1f7a4c 0%, transparent 70%)' }}
-          />
-          <p
-            key={sloganIdx}
-            className="relative z-10 text-2xl font-bold animate-[toastIn_0.8s_ease]"
-            style={{ fontFamily: 'var(--font-display)', color: 'var(--accent-secondary)' }}
-          >
-            {slogans[sloganIdx]}
-          </p>
+        <div className="max-w-[1120px] mx-auto px-4 pt-5 pb-1">
+          <div className="h-8 overflow-hidden">
+            <p
+              key={sloganIdx}
+              className="text-[15px] font-medium animate-[toastIn_0.5s_ease] tracking-wide"
+              style={{ color: 'var(--accent-secondary)' }}
+            >
+              ✨ {slogans[sloganIdx]}
+            </p>
+          </div>
         </div>
       )}
 
       {/* Tabs */}
-      <nav
-        className="sticky top-14 z-40 border-b"
-        style={{ background: 'var(--surface)', borderColor: 'var(--border)' }}
-      >
+      <nav className="sticky top-14 z-40 border-b" style={{ background: 'var(--surface)', borderColor: 'var(--border)' }}>
         <div className="max-w-[1120px] mx-auto flex px-4">
           {tabs.map((t) => (
             <button
               key={t.key}
-              onClick={() => { setTab(t.key); }}
+              onClick={() => setTab(t.key)}
               className="relative px-5 py-3 text-sm font-medium transition-colors"
               style={{ color: tab === t.key ? 'var(--accent)' : 'var(--muted)' }}
             >
@@ -227,6 +222,14 @@ export default function HomePage() {
                       style={{ background: 'var(--accent)', color: '#fff' }}
                     >
                       已学完
+                    </span>
+                  )}
+                  {course.source === 'douyin' && (
+                    <span
+                      className="absolute top-2 right-2 px-2 py-0.5 rounded text-xs font-medium"
+                      style={{ background: 'rgba(233,30,99,0.8)', color: '#fff' }}
+                    >
+                      抖音
                     </span>
                   )}
                   {course.progress != null && course.progress > 0 && !course.is_completed && (

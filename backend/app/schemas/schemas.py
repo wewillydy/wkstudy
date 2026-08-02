@@ -1,4 +1,4 @@
-from datetime import datetime, date
+﻿from datetime import datetime, date
 from pydantic import BaseModel, EmailStr, Field
 from typing import Optional
 
@@ -14,6 +14,8 @@ class RegisterRequest(BaseModel):
     code: str = Field(..., min_length=4, max_length=10)
     password: str = Field(..., min_length=6, max_length=128)
     nickname: str = Field(..., min_length=1, max_length=100)
+    role: str = Field(..., pattern="^(student|course_admin)$")
+    org_name: str = ""
 
 
 class LoginRequest(BaseModel):
@@ -37,7 +39,7 @@ class UserResponse(BaseModel):
     email: str
     nickname: str
     avatar: str
-    is_admin: bool
+    role: str
     is_active: bool
     created_at: datetime
 
@@ -70,6 +72,8 @@ class CourseResponse(BaseModel):
     teacher_name: str
     status: str
     sort_order: int
+    source: str = "direct"
+    owner_id: Optional[int] = None
     created_at: datetime
     courseware: list[CoursewareResponse] = []
 
@@ -87,6 +91,7 @@ class CourseListResponse(BaseModel):
     subject: str
     course_type: str
     teacher_name: str
+    source: str = "direct"
     progress: Optional[float] = None
     is_completed: bool = False
     mark_count: int = 0
@@ -107,6 +112,7 @@ class CourseCreate(BaseModel):
     teacher_name: str = ""
     status: str = "active"
     sort_order: int = 0
+    source: str = "direct"
 
 
 class CourseUpdate(BaseModel):
@@ -121,6 +127,7 @@ class CourseUpdate(BaseModel):
     teacher_name: Optional[str] = None
     status: Optional[str] = None
     sort_order: Optional[int] = None
+    source: Optional[str] = None
 
 
 class UpdateProgressRequest(BaseModel):
@@ -147,7 +154,7 @@ class CoursewareUpdate(BaseModel):
 class ScheduleCreate(BaseModel):
     course_id: int
     schedule_date: date
-    user_id: Optional[int] = None  # NULL = all users
+    user_id: Optional[int] = None
 
 
 class ScheduleResponse(BaseModel):
@@ -213,7 +220,7 @@ class SloganUpdate(BaseModel):
 class AdminUserUpdate(BaseModel):
     nickname: Optional[str] = None
     is_active: Optional[bool] = None
-    is_admin: Optional[bool] = None
+    role: Optional[str] = None
 
 
 class AdminStatsResponse(BaseModel):
@@ -222,6 +229,39 @@ class AdminStatsResponse(BaseModel):
     total_schedules: int
     completed_courses: int
     active_today: int
+
+
+class BindingCreate(BaseModel):
+    student_email: EmailStr
+
+
+class BindingResponse(BaseModel):
+    id: int
+    course_admin_id: int
+    student_id: int
+    student_email: str = ""
+    student_nickname: str = ""
+    created_at: datetime
+
+    class Config:
+        from_attributes = True
+
+
+class DouyinCookieUpdate(BaseModel):
+    cookie: str
+
+
+# ======== Douyin ========
+class DouyinResolveRequest(BaseModel):
+    share_url: str = Field(..., min_length=1)
+
+
+class DouyinResolveResponse(BaseModel):
+    title: str = ""
+    cover_url: str = ""
+    author: str = ""
+    video_url: str = ""
+    duration: int = 0
 
 
 # ======== Common ========

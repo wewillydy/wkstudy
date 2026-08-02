@@ -15,7 +15,7 @@ function ProtectedRoute({ children }: { children: React.ReactNode }) {
 function AdminRoute({ children }: { children: React.ReactNode }) {
   const { isAuthenticated, user } = useAuthStore();
   if (!isAuthenticated) return <Navigate to="/login" replace />;
-  if (!user?.is_admin) return <Navigate to="/" replace />;
+  if (!user?.role || user.role === 'student') return <Navigate to="/" replace />;
   return <>{children}</>;
 }
 

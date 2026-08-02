@@ -1,4 +1,4 @@
-from fastapi import APIRouter, Depends, HTTPException, status
+﻿from fastapi import APIRouter, Depends, HTTPException, status
 from sqlalchemy.orm import Session
 
 from app.core.database import get_db
@@ -56,7 +56,7 @@ async def update_mark(
         Mark.course_id == course_id,
     ).first()
     if not mark:
-        raise HTTPException(status_code=404, detail="标记不存在")
+        raise HTTPException(status_code=404, detail="Mark not found")
     for k, v in req.model_dump(exclude_unset=True).items():
         setattr(mark, k, v)
     db.commit()
@@ -77,7 +77,7 @@ async def delete_mark(
         Mark.course_id == course_id,
     ).first()
     if not mark:
-        raise HTTPException(status_code=404, detail="标记不存在")
+        raise HTTPException(status_code=404, detail="Mark not found")
     db.delete(mark)
     db.commit()
-    return MessageResponse(message="标记已删除")
+    return MessageResponse(message="Mark deleted")

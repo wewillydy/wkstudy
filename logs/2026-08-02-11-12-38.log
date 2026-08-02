@@ -1,0 +1,4 @@
+2026-08-02 11:12:46,238 - Douyin_TikTok_Download_API_Crawlers - ERROR - 请求Douyin msToken API时发生错误：[WinError 10013] 以一种访问权限不允许的方式做了一个访问套接字的尝试。
+2026-08-02 11:12:46,246 - Douyin_TikTok_Download_API_Crawlers - INFO - 将使用本地生成的虚假msToken参数，以继续请求。
+2026-08-02 11:12:54,120 - Douyin_TikTok_Download_API_Crawlers - ERROR - 请求Douyin msToken API时发生错误：[WinError 10013] 以一种访问权限不允许的方式做了一个访问套接字的尝试。
+2026-08-02 11:12:54,121 - Douyin_TikTok_Download_API_Crawlers - INFO - 将使用本地生成的虚假msToken参数，以继续请求。

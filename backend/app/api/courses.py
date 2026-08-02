@@ -1,11 +1,11 @@
-from datetime import date, datetime
+﻿from datetime import date, datetime
 from math import ceil
 from fastapi import APIRouter, Depends, HTTPException, Query, status
 from sqlalchemy.orm import Session, joinedload
 from sqlalchemy import func
 
 from app.core.database import get_db
-from app.core.deps import get_current_user
+from app.core.deps import get_current_user, get_course_admin
 from app.models import User, Course, Courseware, Schedule, UserCourse, Mark
 from app.schemas.schemas import (
     CourseResponse, CourseListResponse, CourseCreate, CourseUpdate,
@@ -18,8 +18,15 @@ router = APIRouter(prefix="/api/courses", tags=["courses"])
 
 # ---- Course CRUD (Admin) ----
 @router.post("", response_model=CourseResponse)
-async def create_course(req: CourseCreate, db: Session = Depends(get_db)):
+async def create_course(
+    req: CourseCreate,
+    db: Session = Depends(get_db),
+    current_user: User = Depends(get_course_admin),
+):
     course = Course(**req.model_dump())
+    # Set owner: super_admin courses get owner_id=None, course_admin get their own id
+    if current_user.role == "course_admin":
+        course.owner_id = current_user.id
     db.add(course)
     db.commit()
     db.refresh(course)
@@ -33,6 +40,7 @@ async def list_courses(
     grade: str = Query(""),
     subject: str = Query(""),
     keyword: str = Query(""),
+    owned: bool = Query(False),
     db: Session = Depends(get_db),
     current_user: User = Depends(get_current_user),
 ):
@@ -43,6 +51,8 @@ async def list_courses(
         q = q.filter(Course.subject == subject)
     if keyword:
         q = q.filter(Course.title.contains(keyword))
+    if owned:
+        q = q.filter(Course.owner_id == current_user.id)
 
     total = q.count()
     courses = q.order_by(Course.sort_order.desc(), Course.created_at.desc()).offset(
@@ -66,6 +76,7 @@ async def list_courses(
             grade=c.grade or "", subject=c.subject or "",
             course_type=c.course_type or "recorded",
             teacher_name=c.teacher_name or "",
+            source=c.source or "direct",
             progress=uc.progress if uc else None,
             is_completed=uc.is_completed if uc else False,
             mark_count=mark_count,
@@ -73,7 +84,7 @@ async def list_courses(
 
     return PaginatedResponse(
         items=items, total=total, page=page, page_size=page_size,
-        total_pages=ceil(total / page_size),
+        total_pages=ceil(total / page_size) if page_size > 0 else 0,
     )
 
 
@@ -113,6 +124,7 @@ async def today_courses(
             grade=c.grade or "", subject=c.subject or "",
             course_type=c.course_type or "recorded",
             teacher_name=c.teacher_name or "",
+            source=c.source or "direct",
             progress=uc.progress if uc else None,
             is_completed=uc.is_completed if uc else False,
             mark_count=mark_count,
@@ -150,6 +162,7 @@ async def completed_courses(
             grade=c.grade or "", subject=c.subject or "",
             course_type=c.course_type or "recorded",
             teacher_name=c.teacher_name or "",
+            source=c.source or "direct",
             progress=uc.progress, is_completed=True, mark_count=mark_count,
         ))
     return items
@@ -170,15 +183,23 @@ async def get_course(
 ):
     course = db.query(Course).options(joinedload(Course.courseware)).filter(Course.id == course_id).first()
     if not course:
-        raise HTTPException(status_code=404, detail="课程不存在")
+        raise HTTPException(status_code=404, detail="Course not found")
     return course
 
 
 @router.put("/{course_id}", response_model=CourseResponse)
-async def update_course(course_id: int, req: CourseUpdate, db: Session = Depends(get_db)):
+async def update_course(
+    course_id: int,
+    req: CourseUpdate,
+    db: Session = Depends(get_db),
+    current_user: User = Depends(get_course_admin),
+):
     course = db.query(Course).filter(Course.id == course_id).first()
     if not course:
-        raise HTTPException(status_code=404, detail="课程不存在")
+        raise HTTPException(status_code=404, detail="Course not found")
+    # Course admin can only edit own courses
+    if current_user.role == "course_admin" and course.owner_id != current_user.id:
+        raise HTTPException(status_code=403, detail="Not your course")
     for k, v in req.model_dump(exclude_unset=True).items():
         setattr(course, k, v)
     db.commit()
@@ -187,13 +208,19 @@ async def update_course(course_id: int, req: CourseUpdate, db: Session = Depends
 
 
 @router.delete("/{course_id}", response_model=MessageResponse)
-async def delete_course(course_id: int, db: Session = Depends(get_db)):
+async def delete_course(
+    course_id: int,
+    db: Session = Depends(get_db),
+    current_user: User = Depends(get_course_admin),
+):
     course = db.query(Course).filter(Course.id == course_id).first()
     if not course:
-        raise HTTPException(status_code=404, detail="课程不存在")
+        raise HTTPException(status_code=404, detail="Course not found")
+    if current_user.role == "course_admin" and course.owner_id != current_user.id:
+        raise HTTPException(status_code=403, detail="Not your course")
     db.delete(course)
     db.commit()
-    return MessageResponse(message="课程已删除")
+    return MessageResponse(message="Course deleted")
 
 
 # ---- Progress ----
@@ -206,7 +233,7 @@ async def update_progress(
 ):
     course = db.query(Course).filter(Course.id == course_id).first()
     if not course:
-        raise HTTPException(status_code=404, detail="课程不存在")
+        raise HTTPException(status_code=404, detail="Course not found")
 
     uc = db.query(UserCourse).filter(
         UserCourse.user_id == current_user.id,
@@ -223,10 +250,10 @@ async def update_progress(
     # Mark completed if >= 90%
     if uc.progress >= 0.9 and not uc.is_completed:
         uc.is_completed = True
-        uc.completed_at = datetime.utcnow()
+        uc.completed_at = datetime.now()
 
     db.commit()
-    return MessageResponse(message="进度已更新")
+    return MessageResponse(message="Progress updated")
 
 
 # ---- Courseware ----
@@ -234,7 +261,7 @@ async def update_progress(
 async def add_courseware(course_id: int, req: CoursewareCreate, db: Session = Depends(get_db)):
     course = db.query(Course).filter(Course.id == course_id).first()
     if not course:
-        raise HTTPException(status_code=404, detail="课程不存在")
+        raise HTTPException(status_code=404, detail="Course not found")
     cw = Courseware(course_id=course_id, **req.model_dump())
     db.add(cw)
     db.commit()
@@ -246,7 +273,7 @@ async def add_courseware(course_id: int, req: CoursewareCreate, db: Session = De
 async def delete_courseware(course_id: int, cw_id: int, db: Session = Depends(get_db)):
     cw = db.query(Courseware).filter(Courseware.id == cw_id, Courseware.course_id == course_id).first()
     if not cw:
-        raise HTTPException(status_code=404, detail="课件不存在")
+        raise HTTPException(status_code=404, detail="Courseware not found")
     db.delete(cw)
     db.commit()
-    return MessageResponse(message="课件已删除")
+    return MessageResponse(message="Courseware deleted")

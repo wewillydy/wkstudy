@@ -1,4 +1,4 @@
-from datetime import datetime, timedelta
+﻿from datetime import datetime, timedelta
 from fastapi import APIRouter, Depends, HTTPException, status
 from sqlalchemy.orm import Session
 
@@ -19,6 +19,7 @@ router = APIRouter(prefix="/api/auth", tags=["auth"])
 
 @router.post("/send-code")
 async def send_code(req: SendCodeRequest, db: Session = Depends(get_db)):
+    print(f"[SEND-CODE] START email={req.email} type={req.type}")
     recent = db.query(EmailCode).filter(
         EmailCode.email == req.email,
         EmailCode.type == req.type,
@@ -40,6 +41,7 @@ async def send_code(req: SendCodeRequest, db: Session = Depends(get_db)):
     db.commit()
 
     print(f"[DEV] Code for {req.email}: {code}")
+    print(f"[SEND-CODE] DONE email={req.email}")
     return {"message": "Code sent", "dev_code": code}
 
 
@@ -57,7 +59,12 @@ async def register(req: RegisterRequest, db: Session = Depends(get_db)):
         raise HTTPException(status_code=400, detail="Invalid or expired code")
 
     code_record.used = True
-    user = User(email=req.email, nickname=req.nickname, password_hash=hash_password(req.password))
+    user = User(
+        email=req.email,
+        nickname=req.nickname,
+        password_hash=hash_password(req.password),
+        role=req.role,
+    )
     db.add(user)
     db.flush()
 
@@ -139,3 +146,5 @@ async def refresh_token(req: RefreshRequest, db: Session = Depends(get_db)):
 @router.get("/me", response_model=UserResponse)
 async def get_me(current_user: User = Depends(get_current_user)):
     return current_user
+
+

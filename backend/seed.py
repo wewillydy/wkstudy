@@ -10,7 +10,6 @@ Base.metadata.create_all(bind=engine)
 
 db = SessionLocal()
 
-# Default slogans
 slogans = [
     "名师作伴，顶峰相见",
     "名师带路，超越无数",
@@ -22,18 +21,17 @@ for i, text in enumerate(slogans):
     if not existing:
         db.add(Slogan(text=text, is_active=True, sort_order=i))
 
-# Default admin user
 admin = db.query(User).filter(User.email == "admin@example.com").first()
 if not admin:
     db.add(User(
         email="admin@example.com",
-        nickname="管理员",
+        nickname="超级管理员",
         password_hash=hash_password("admin123"),
-        is_admin=True,
+        role="super_admin",
     ))
 
 db.commit()
 db.close()
 print("Seed data created successfully!")
-print("Admin: admin@example.com / admin123")
+print("Super Admin: admin@example.com / admin123")
 print("Slogans:", slogans)

@@ -9,10 +9,12 @@ export default function LoginPage() {
   const showToast = useToastStore((s) => s.show);
 
   const [mode, setMode] = useState<'login' | 'register'>('login');
+  const [role, setRole] = useState<'student' | 'course_admin'>('student');
   const [email, setEmail] = useState('');
   const [code, setCode] = useState('');
   const [password, setPassword] = useState('');
   const [nickname, setNickname] = useState('');
+  const [orgName, setOrgName] = useState('');
   const [sending, setSending] = useState(false);
   const [countdown, setCountdown] = useState(0);
   const [loading, setLoading] = useState(false);
@@ -24,7 +26,7 @@ export default function LoginPage() {
     "名师在手，班里我有",
   ]);
   const [sloganIdx, setSloganIdx] = useState(0);
-  const timerRef = useRef<ReturnType<typeof setInterval>>();
+  const timerRef = useRef<ReturnType<typeof setInterval>>(undefined);
 
   useEffect(() => {
     sloganApi.list().then(({ data }) => {
@@ -84,10 +86,11 @@ export default function LoginPage() {
     if (!email) { setError("请输入邮箱"); return; }
     if (!password || password.length < 6) { setError("密码至少6位"); return; }
     if (!code) { setError("请输入验证码"); return; }
+    if (role === 'course_admin' && !orgName.trim()) { setError("请输入机构/教师名称"); return; }
     setLoading(true);
     setError('');
     try {
-      await register(email, code, password, nickname);
+      await register(email, code, password, nickname, role);
       navigate("/");
     } catch (err: any) {
       setError(err.response?.data?.detail || "注册失败");
@@ -119,10 +122,25 @@ export default function LoginPage() {
 
           <div className="space-y-4">
             {mode === "register" && (
-              <div>
-                <label className="block text-sm text-[var(--muted)] mb-1.5">昵称</label>
-                <input type="text" value={nickname} onChange={(e) => setNickname(e.target.value)} placeholder="输入昵称" className="w-full px-4 py-2.5 rounded-[var(--radius)] text-sm outline-none border border-[var(--border)] bg-transparent focus:border-[var(--accent)] transition-colors" />
-              </div>
+              <>
+                <div>
+                  <label className="block text-sm text-[var(--muted)] mb-1.5">注册身份</label>
+                  <div className="flex gap-2">
+                    <button type="button" className={`flex-1 py-2 text-sm rounded-[var(--radius)] font-medium transition-all ${role === "student" ? "text-[var(--fg)]" : "text-[var(--muted)]"}`} style={role === "student" ? { background: "var(--accent)" } : { background: "var(--fg-soft)" }} onClick={() => setRole("student")}>我是学生</button>
+                    <button type="button" className={`flex-1 py-2 text-sm rounded-[var(--radius)] font-medium transition-all ${role === "course_admin" ? "text-[var(--fg)]" : "text-[var(--muted)]"}`} style={role === "course_admin" ? { background: "var(--accent)" } : { background: "var(--fg-soft)" }} onClick={() => setRole("course_admin")}>我是课程管理员</button>
+                  </div>
+                </div>
+                <div>
+                  <label className="block text-sm text-[var(--muted)] mb-1.5">昵称</label>
+                  <input type="text" value={nickname} onChange={(e) => setNickname(e.target.value)} placeholder="输入昵称" className="w-full px-4 py-2.5 rounded-[var(--radius)] text-sm outline-none border border-[var(--border)] bg-transparent focus:border-[var(--accent)] transition-colors" />
+                </div>
+                {role === "course_admin" && (
+                  <div>
+                    <label className="block text-sm text-[var(--muted)] mb-1.5">机构/教师名称</label>
+                    <input type="text" value={orgName} onChange={(e) => setOrgName(e.target.value)} placeholder="输入您所在的机构或您的教师名称" className="w-full px-4 py-2.5 rounded-[var(--radius)] text-sm outline-none border border-[var(--border)] bg-transparent focus:border-[var(--accent)] transition-colors" />
+                  </div>
+                )}
+              </>
             )}
 
             <div>
