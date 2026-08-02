@@ -19,16 +19,25 @@ async def resolve(
     db: Session = Depends(get_db),
     current_user: User = Depends(get_current_user),
 ):
-    """Parse a douyin share URL and return video info (for admin course creation)."""
-    cookie = current_user.douyin_cookie if current_user.role == "course_admin" else None
-    if not cookie:
-        raise HTTPException(status_code=400, detail='Please configure your Douyin cookie in the "Douyin Cookie" tab')
+    """Parse a douyin share URL and return video info (for admin course creation).
+
+    Cookie priority: user''s douyin_cookie from DB > .cookies.json fallback.
+    This is best-effort (same as douxue) -- failure to resolve does not prevent saving.
+    """
+    share_url = req.share_url
+    cookie = current_user.douyin_cookie.strip() if current_user.douyin_cookie else None
+    print(f"[DOUYIN RESOLVE] user={current_user.email} role={current_user.role} has_cookie={bool(cookie)} url={share_url[:60]}...")
     try:
-        info = await resolve_douyin_url(req.share_url, cookie)
+        info = await resolve_douyin_url(share_url, cookie)
+        print(f"[DOUYIN RESOLVE] success: title={info.get('title','')[:30]} video_url={'yes' if info.get('video_url') else 'no'}")
         return DouyinResolveResponse(**info)
     except RuntimeError as e:
+        print(f"[DOUYIN RESOLVE] RuntimeError: {e}")
         raise HTTPException(status_code=400, detail=str(e))
     except Exception as e:
+        print(f"[DOUYIN RESOLVE] Exception: {type(e).__name__}: {e}")
+        import traceback
+        traceback.print_exc()
         raise HTTPException(status_code=500, detail=f"Douyin resolve error: {e}")
 
 
@@ -38,13 +47,7 @@ async def stream(
     request: Request = None,
     db: Session = Depends(get_db),
 ):
-    """Proxy a douyin video stream.
-    
-    Resolves the share URL stored in the course to get a fresh CDN URL,
-    then proxies the video stream with proper douyin request headers.
-    This is the same architecture as douxue''s /api/links/:id/stream endpoint.
-    """
-    # 1. Get course and share URL
+    """Proxy a douyin video stream."""
     course = db.query(Course).filter(Course.id == course_id).first()
     if not course:
         raise HTTPException(status_code=404, detail="Course not found")
@@ -55,36 +58,38 @@ async def stream(
     if not share_url:
         raise HTTPException(status_code=400, detail="No share URL for this course")
 
-    # 2. Resolve share URL to get CDN video URL
-    # Get cookie from course owner (course admin)
     cookie = None
     if course.owner_id:
         owner = db.query(User).filter(User.id == course.owner_id).first()
         if owner and owner.douyin_cookie:
             cookie = owner.douyin_cookie
 
+    print(f"[DOUYIN STREAM] course_id={course_id} owner_cookie={'yes' if cookie else 'no (using .cookies.json)'} url={share_url[:60]}...")
     try:
         info = await resolve_douyin_url(share_url, cookie)
         video_url = info.get("video_url")
         if not video_url:
+            print(f"[DOUYIN STREAM] video_url is empty!")
             raise HTTPException(status_code=500, detail="Failed to resolve video URL")
+        print(f"[DOUYIN STREAM] resolved OK, proxying stream...")
     except HTTPException:
         raise
     except RuntimeError as e:
+        print(f"[DOUYIN STREAM] RuntimeError: {e}")
         raise HTTPException(status_code=500, detail=f"Failed to resolve douyin video: {e}")
     except Exception as e:
+        print(f"[DOUYIN STREAM] Exception: {type(e).__name__}: {e}")
+        import traceback
+        traceback.print_exc()
         raise HTTPException(status_code=500, detail=f"Douyin stream error: {e}")
 
-    # 3. Proxy the CDN video stream (same as douxue''s approach)
     douyin_headers = {
         "Referer": "https://www.douyin.com/",
         "Origin": "https://www.douyin.com",
         "User-Agent": "Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/139.0.0.0 Safari/537.36",
     }
 
-    range_header = None
-    if request:
-        range_header = request.headers.get("range")
+    range_header = request.headers.get("range") if request else None
     if range_header:
         douyin_headers["Range"] = range_header
 
@@ -103,8 +108,5 @@ async def stream(
     return StreamingResponse(
         iter_bytes(),
         media_type="video/mp4",
-        headers={
-            "Accept-Ranges": "bytes",
-            "Cache-Control": "no-cache",
-        },
+        headers={"Accept-Ranges": "bytes", "Cache-Control": "no-cache"},
     )

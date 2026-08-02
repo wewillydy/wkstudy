@@ -1,4 +1,4 @@
-﻿import { useState, useEffect } from 'react';
+import { useState, useEffect } from 'react';
 import { useNavigate } from 'react-router-dom';
 import { useAuthStore, useToastStore } from '../stores';
 import { adminApi, courseApi, sloganApi, scheduleApi, douyinApi } from '../api/client';
@@ -239,7 +239,7 @@ function AdminCoursesPanel({ isSuper }: { isSuper: boolean }) {
       const { data } = await douyinApi.resolve({ share_url: douyinUrl });
       setForm({ ...form, title: data.title, cover_url: data.cover_url, video_url: douyinUrl, duration: data.duration, teacher_name: data.author, source: 'douyin' });
       showToast('解析成功');
-    } catch (err: any) { showToast(err.response?.data?.detail || '解析失败'); }
+    } catch (err: any) { console.error('Resolve error:', err); showToast(err.response?.data?.detail || err.message || '解析失败'); }
     finally { setResolving(false); }
   };
 
@@ -624,4 +624,5 @@ function StudentsPanel() {
     </div>
   );
 }
+
 

@@ -1,4 +1,4 @@
-﻿import axios from 'axios';
+import axios from 'axios';
 
 const api = axios.create({
   baseURL: '/api',
@@ -74,7 +74,7 @@ export const adminApi = {
 };
 
 export const douyinApi = {
-  resolve: (data: { share_url: string }) => api.post('/douyin/resolve', data),
+  resolve: (data: { share_url: string }) => api.post('/douyin/resolve', data, { timeout: 60000 }),
 };
 
 export const uploadApi = {
@@ -86,4 +86,5 @@ export const uploadApi = {
     });
   },
 };
+
 
