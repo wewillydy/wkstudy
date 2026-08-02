@@ -1,4 +1,4 @@
-﻿import { useState, useEffect, useRef, useCallback } from 'react';
+import { useState, useEffect, useRef, useCallback } from 'react';
 import { useParams, useNavigate } from 'react-router-dom';
 import { useToastStore } from '../stores';
 import { courseApi, markApi } from '../api/client';
@@ -357,7 +357,7 @@ export default function PlayerPage() {
       {/* Controls bar */}
       <div
         className={`absolute bottom-0 left-0 right-0 transition-opacity duration-300 ${showControls || !playing ? 'opacity-100' : 'opacity-0 pointer-events-none'}`}
-        style={{ background: 'linear-gradient(transparent, rgba(0,0,0,0.85))' }}
+        className='player-controls-bar'
       >
         {/* Progress bar */}
         <div className="progress-track relative h-1 bg-[rgba(255,255,255,0.15)] cursor-pointer group" onClick={handleSeek}>

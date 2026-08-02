@@ -166,10 +166,10 @@ function CoursesPanel() {
     e.preventDefault();
     try {
       if (editId) {
-        await courseApi.update(editId, form);
+        await courseApi.update(editId, { ...form, duration: form.duration * 60 });
         showToast('课程已更新');
       } else {
-        await courseApi.create(form);
+        await courseApi.create({ ...form, duration: form.duration * 60 });
         showToast('课程已创建');
       }
       resetForm();
@@ -177,14 +177,25 @@ function CoursesPanel() {
     } catch (err: any) { showToast(err.response?.data?.detail || '操作失败'); }
   };
 
-  const handleEdit = (c: any) => {
-    setForm({
-      title: c.title, video_url: c.video_url, cover_url: c.cover_url || '',
-      description: c.description || '', grade: c.grade || '', subject: c.subject || '',
-      teacher_name: c.teacher_name || '', duration: c.duration || 0, sort_order: c.sort_order || 0,
-    });
-    setEditId(c.id);
-    setShowForm(true);
+  const handleEdit = async (c: any) => {
+    try {
+      const { data } = await courseApi.getById(c.id);
+      setForm({
+        title: data.title || '',
+        video_url: data.video_url || '',
+        cover_url: data.cover_url || '',
+        description: data.description || '',
+        grade: data.grade || '',
+        subject: data.subject || '',
+        teacher_name: data.teacher_name || '',
+        duration: Math.round((data.duration || 0) / 60),
+        sort_order: data.sort_order || 0,
+      });
+      setEditId(data.id);
+      setShowForm(true);
+    } catch {
+      showToast("获取课程详情失败");
+    }
   };
 
   const handleDelete = async (id: number) => {
@@ -235,7 +246,7 @@ function CoursesPanel() {
               <input value={form.subject} onChange={(e) => setForm({ ...form, subject: e.target.value })} className="w-full px-3 py-2 rounded text-sm border bg-transparent" style={{ borderColor: 'var(--border)' }} placeholder="如：数学、语文" />
             </div>
             <div>
-              <label className="block text-xs text-[var(--muted)] mb-1">时长(秒)</label>
+              <label className="block text-xs text-[var(--muted)] mb-1">时长(分)</label>
               <input type="number" value={form.duration} onChange={(e) => setForm({ ...form, duration: Number(e.target.value) })} className="w-full px-3 py-2 rounded text-sm border bg-transparent" style={{ borderColor: 'var(--border)' }} />
             </div>
             <div>
